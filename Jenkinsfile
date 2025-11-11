@@ -7,55 +7,88 @@ pipeline {
     }
 
     stages {
+
+        // ---------------------------
+        // 1️⃣ CHECKOUT CODE
+        // ---------------------------
         stage('Checkout Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/sumanvitummala/multi-env-deploy.git'
             }
         }
 
+        // ---------------------------
+        // 2️⃣ BUILD DOCKER IMAGE
+        // ---------------------------
         stage('Build Docker Image') {
             steps {
                 dir('app') {
                     script {
-                        sh '''
-                        docker build -t multi-env-app:${BRANCH_NAME} .
-                        '''
+                        // Use default workspace if BRANCH_NAME not set (e.g., manual build)
+                        def imageTag = env.BRANCH_NAME ?: "dev"
+
+                        sh """
+                        echo "🔧 Building Docker image for tag: ${imageTag}"
+                        docker build -t ${ECR_REPO}:${imageTag} .
+                        """
                     }
                 }
             }
         }
 
+        // ---------------------------
+        // 3️⃣ PUSH TO AWS ECR
+        // ---------------------------
         stage('Push to ECR') {
             steps {
                 withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
                     script {
-                        sh '''
+                        def imageTag = env.BRANCH_NAME ?: "dev"
+
+                        sh """
+                        echo "🔑 Logging in to ECR..."
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
-                        docker tag multi-env-app:${BRANCH_NAME} ${ECR_REPO}:${BRANCH_NAME}
-                        docker push ${ECR_REPO}:${BRANCH_NAME}
-                        '''
+
+                        echo "📦 Pushing image ${ECR_REPO}:${imageTag} ..."
+                        docker push ${ECR_REPO}:${imageTag}
+                        """
                     }
                 }
             }
         }
 
+        // ---------------------------
+        // 4️⃣ DEPLOY VIA TERRAFORM
+        // ---------------------------
         stage('Terraform Deploy') {
             steps {
                 dir('terraform') {
                     withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
                         script {
-                            sh '''
-                            terraform init
-                            terraform workspace select ${BRANCH_NAME} || terraform workspace new ${BRANCH_NAME}
+                            def envName = env.BRANCH_NAME ?: "dev"
+                            def eip = ""
 
-                            if [ "${BRANCH_NAME}" == "dev" ]; then
-                              terraform apply -auto-approve -var "elastic_ip_allocation_id=eipalloc-0e49f51837e220cf8"
-                            elif [ "${BRANCH_NAME}" == "qa" ]; then
-                              terraform apply -auto-approve -var "elastic_ip_allocation_id=eipalloc-0107e1a2b50cb82b1"
-                            elif [ "${BRANCH_NAME}" == "main" ]; then
-                              terraform apply -auto-approve -var "elastic_ip_allocation_id=eipalloc-0f6a1264a5e06e051"
-                            fi
-                            '''
+                            // Map environment to EIP ID
+                            if (envName == "dev") {
+                                eip = "eipalloc-0e49f51837e220cf8"
+                            } else if (envName == "qa") {
+                                eip = "eipalloc-0107e1a2b50cb82b1"
+                            } else if (envName == "main" || envName == "prod") {
+                                eip = "eipalloc-0f6a1264a5e06e051"
+                            } else {
+                                error("Unknown environment: ${envName}")
+                            }
+
+                            sh """
+                            echo "🚀 Initializing Terraform for ${envName}..."
+                            terraform init -input=false
+
+                            echo "🔁 Selecting or creating workspace..."
+                            terraform workspace select ${envName} || terraform workspace new ${envName}
+
+                            echo "🌍 Deploying environment: ${envName} with EIP ${eip}"
+                            terraform apply -auto-approve -var "elastic_ip_allocation_id=${eip}"
+                            """
                         }
                     }
                 }
@@ -63,12 +96,16 @@ pipeline {
         }
     }
 
+    // ---------------------------
+    // 5️⃣ POST-STAGE SUMMARY
+    // ---------------------------
     post {
         success {
-            echo "✅ Deployment successful for ${BRANCH_NAME}"
+            echo "✅ Deployment successful for environment: ${env.BRANCH_NAME ?: 'dev'}"
         }
         failure {
-            echo "❌ Deployment failed for ${BRANCH_NAME}"
+            echo "❌ Deployment failed for environment: ${env.BRANCH_NAME ?: 'dev'}"
         }
     }
 }
+

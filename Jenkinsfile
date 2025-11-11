@@ -22,26 +22,25 @@ pipeline {
     steps {
         script {
             sh '''
-            echo "🔧 Installing AWS CLI and Terraform if missing..."
+            echo "🔧 Installing Terraform as root..."
 
-            # If terraform not found, install using sudo
-            if ! command -v terraform &> /dev/null; then
-              echo "Installing Terraform..."
-              sudo apt-get update -y
-              sudo apt-get install -y curl unzip
-              curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o terraform.zip
-              unzip -o terraform.zip
-              sudo mv terraform /usr/local/bin/
+            # Switch to root, install Terraform, and switch back
+            su -c '
+              apt-get update -y &&
+              apt-get install -y curl unzip &&
+              curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o terraform.zip &&
+              unzip -o terraform.zip &&
+              mv terraform /usr/local/bin/ &&
               rm terraform.zip
-            fi
+            ' root
 
-            echo "✅ Terraform and AWS CLI setup complete"
             terraform -version
             aws --version
             '''
         }
     }
 }
+
 
 
 

@@ -18,30 +18,6 @@ pipeline {
         }
 
         
-        stage('Setup Tools') {
-    steps {
-        script {
-            sh '''
-            echo "🔧 Installing Terraform as root..."
-
-            # Switch to root, install Terraform, and switch back
-            su -c '
-              apt-get update -y &&
-              apt-get install -y curl unzip &&
-              curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o terraform.zip &&
-              unzip -o terraform.zip &&
-              mv terraform /usr/local/bin/ &&
-              rm terraform.zip
-            ' root
-
-            terraform -version
-            aws --version
-            '''
-        }
-    }
-}
-
-
 
 
         // ---------------------------

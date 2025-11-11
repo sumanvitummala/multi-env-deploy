@@ -17,6 +17,36 @@ pipeline {
             }
         }
 
+        
+        stage('Setup Tools') {
+            steps {
+                script {
+                    sh '''
+                    echo "🔧 Installing AWS CLI and Terraform if missing..."
+
+                    # Install AWS CLI if not present
+                    if ! command -v aws &> /dev/null; then
+                    apt-get update -y && apt-get install -y awscli
+                    fi
+
+                    # Install Terraform if not present
+                    if ! command -v terraform &> /dev/null; then
+                    apt-get update -y && apt-get install -y curl unzip
+                    curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o terraform.zip
+                    unzip terraform.zip
+                    mv terraform /usr/local/bin/
+                    rm terraform.zip
+                    fi
+
+                    echo "✅ Terraform and AWS CLI setup complete"
+                    terraform -version
+                    aws --version
+                    '''
+                }
+            }
+        }
+
+
         // ---------------------------
         // 2️⃣ BUILD DOCKER IMAGE
         // ---------------------------

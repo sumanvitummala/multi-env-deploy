@@ -75,9 +75,10 @@ systemctl restart multi-env-app
 # -------------------------------
 # 4. Write monitoring files into /opt/monitoring and start containers (Prometheus, Grafana, cAdvisor, node-exporter)
 # -------------------------------
-MON_DIR=/opt/monitoring
-mkdir -p ${MON_DIR}
-cd ${MON_DIR}
+MON_DIR=${MON_DIR}
+/bin/mkdir -p $$MON_DIR
+cd $$MON_DIR
+
 
 # write prometheus.yml
 cat <<'PROM' > prometheus.yml

@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENV', choices: ['dev', 'qa', 'prod'], description: 'Select environment to deploy')
+    }
+
     environment {
         AWS_REGION = 'ap-south-1'
         ECR_REPO = '987686461903.dkr.ecr.ap-south-1.amazonaws.com/multi-env-app'
@@ -24,7 +28,7 @@ pipeline {
             steps {
                 dir('app') {
                     script {
-                        def imageTag = env.BRANCH_NAME ?: "dev"
+                        def imageTag = params.ENV
                         bat """
                         echo 🔧 Building Docker image for tag: ${imageTag}
                         docker build -t ${ECR_REPO}:${imageTag} .
@@ -41,11 +45,11 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-access', region: "${AWS_REGION}") {
                     script {
-                        def imageTag = env.BRANCH_NAME ?: "dev"
+                        def imageTag = params.ENV
                         bat """
                         echo 🔑 Logging in to ECR...
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
-                        
+
                         echo 📦 Pushing image ${ECR_REPO}:${imageTag} ...
                         docker push ${ECR_REPO}:${imageTag}
                         """
@@ -62,17 +66,17 @@ pipeline {
                 dir('terraform') {
                     withAWS(credentials: 'aws-access', region: "${AWS_REGION}") {
                         script {
-                            def envName = env.BRANCH_NAME ?: "dev"
+                            def envName = params.ENV
                             def eip = ""
 
                             if (envName == "dev") {
                                 eip = "eipalloc-0af979e1817cff367"
                             } else if (envName == "qa") {
                                 eip = "eipalloc-0b7d0b942d296f987"
-                            } else if (envName == "main" || envName == "prod") {
+                            } else if (envName == "prod") {
                                 eip = "eipalloc-0f6a1264a5e06e051"
                             } else {
-                                error("Unknown environment: ${envName}")
+                                error("❌ Unknown environment: ${envName}")
                             }
 
                             bat """
@@ -97,10 +101,10 @@ pipeline {
     // ---------------------------
     post {
         success {
-            echo "✅ Deployment successful for environment: ${env.BRANCH_NAME ?: 'dev'}"
+            echo "✅ Deployment successful for environment: ${params.ENV}"
         }
         failure {
-            echo "❌ Deployment failed for environment: ${env.BRANCH_NAME ?: 'dev'}"
+            echo "❌ Deployment failed for environment: ${params.ENV}"
         }
     }
 }

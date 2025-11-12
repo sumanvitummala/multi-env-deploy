@@ -39,7 +39,7 @@ pipeline {
         // ---------------------------
         stage('Push to ECR') {
             steps {
-                withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
+                withAWS(credentials: 'aws-access', region: "${AWS_REGION}") {
                     script {
                         def imageTag = env.BRANCH_NAME ?: "dev"
                         bat """
@@ -60,7 +60,7 @@ pipeline {
         stage('Terraform Deploy') {
             steps {
                 dir('terraform') {
-                    withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
+                    withAWS(credentials: 'aws-access', region: "${AWS_REGION}") {
                         script {
                             def envName = env.BRANCH_NAME ?: "dev"
                             def eip = ""

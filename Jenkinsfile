@@ -66,9 +66,9 @@ pipeline {
                             def eip = ""
 
                             if (envName == "dev") {
-                                eip = "eipalloc-0e49f51837e220cf8"
+                                eip = "eipalloc-0af979e1817cff367"
                             } else if (envName == "qa") {
-                                eip = "eipalloc-0107e1a2b50cb82b1"
+                                eip = "eipalloc-0b7d0b942d296f987"
                             } else if (envName == "main" || envName == "prod") {
                                 eip = "eipalloc-0f6a1264a5e06e051"
                             } else {

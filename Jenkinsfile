@@ -17,9 +17,6 @@ pipeline {
             }
         }
 
-        
-
-
         // ---------------------------
         // 2️⃣ BUILD DOCKER IMAGE
         // ---------------------------
@@ -27,11 +24,9 @@ pipeline {
             steps {
                 dir('app') {
                     script {
-                        // Use default workspace if BRANCH_NAME not set (e.g., manual build)
                         def imageTag = env.BRANCH_NAME ?: "dev"
-
-                        sh """
-                        echo "🔧 Building Docker image for tag: ${imageTag}"
+                        bat """
+                        echo 🔧 Building Docker image for tag: ${imageTag}
                         docker build -t ${ECR_REPO}:${imageTag} .
                         """
                     }
@@ -47,12 +42,11 @@ pipeline {
                 withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
                     script {
                         def imageTag = env.BRANCH_NAME ?: "dev"
-
-                        sh """
-                        echo "🔑 Logging in to ECR..."
+                        bat """
+                        echo 🔑 Logging in to ECR...
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
-
-                        echo "📦 Pushing image ${ECR_REPO}:${imageTag} ..."
+                        
+                        echo 📦 Pushing image ${ECR_REPO}:${imageTag} ...
                         docker push ${ECR_REPO}:${imageTag}
                         """
                     }
@@ -71,7 +65,6 @@ pipeline {
                             def envName = env.BRANCH_NAME ?: "dev"
                             def eip = ""
 
-                            // Map environment to EIP ID
                             if (envName == "dev") {
                                 eip = "eipalloc-0e49f51837e220cf8"
                             } else if (envName == "qa") {
@@ -82,14 +75,14 @@ pipeline {
                                 error("Unknown environment: ${envName}")
                             }
 
-                            sh """
-                            echo "🚀 Initializing Terraform for ${envName}..."
+                            bat """
+                            echo 🚀 Initializing Terraform for ${envName}...
                             terraform init -input=false
 
-                            echo "🔁 Selecting or creating workspace..."
+                            echo 🔁 Selecting or creating workspace...
                             terraform workspace select ${envName} || terraform workspace new ${envName}
 
-                            echo "🌍 Deploying environment: ${envName} with EIP ${eip}"
+                            echo 🌍 Deploying environment: ${envName} with EIP ${eip}
                             terraform apply -auto-approve -var "elastic_ip_allocation_id=${eip}"
                             """
                         }
@@ -111,4 +104,3 @@ pipeline {
         }
     }
 }
-

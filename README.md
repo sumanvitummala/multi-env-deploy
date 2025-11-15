@@ -6,6 +6,6 @@ using Jenkins, Docker, Terraform, and AWS.
 
 ## Project Structure
 - app/ – Node.js app + Dockerfile
-- terraform/ – Infrastructure setup (will be added later)
-- Jenkinsfile – CI/CD pipeline (will be added later)
+- terraform/ – Infrastructure setup 
+- Jenkinsfile – CI/CD pipeline
 
